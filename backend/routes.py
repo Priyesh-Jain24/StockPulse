@@ -11,6 +11,30 @@ from backend.services.backtest import run_sma_backtest
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
+@api.route("/health")
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "service": "stockpulse-backend"
+    }), 200
+
+@api.route("/health/data")
+def health_data():
+    return jsonify({
+        "status": cache.status,
+        "source": "Yahoo Finance",
+        "cache_available": len(cache.data) > 0,
+        "last_updated": cache.last_updated,
+        "message": cache.message
+    }), 200
+
+def _handle_yf_error(e):
+    err_str = str(e)
+    if "401" in err_str or "Invalid Crumb" in err_str or "429" in err_str or "Unauthorized" in err_str:
+        return jsonify({"error": "Market data temporarily unavailable from live API provider."}), 503
+    traceback.print_exc()
+    return jsonify({"error": err_str}), 500
+
 def _safe(val):
     if val is None: return None
     if isinstance(val, float) and (math.isnan(val) or math.isinf(val)): return None
@@ -51,8 +75,7 @@ def get_stock_history(symbol):
         }
         return jsonify(data)
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/stock/<symbol>/info")
 def get_stock_info(symbol):
@@ -93,8 +116,7 @@ def get_stock_info(symbol):
         }
         return jsonify(result)
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/stock/<symbol>/financials")
 def get_stock_financials(symbol):
@@ -114,7 +136,7 @@ def get_stock_financials(symbol):
         }
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/search/<query>")
 def search_ticker(query):
@@ -152,15 +174,16 @@ def get_stock_news(symbol):
             clean_news.append({"title": title, "publisher": publisher, "link": link, "time": pub_time})
         return jsonify(clean_news)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/screener")
 def get_screener_data():
     if time.time() - cache.last_updated > 3600 and not cache.is_fetching:
         start_cache_thread()
     return jsonify({
-        "status": "ready" if cache.data else "loading",
-        "data": cache.data
+        "status": cache.status,
+        "data": cache.data,
+        "message": cache.message
     })
 
 @api.route("/sectors")
@@ -239,7 +262,7 @@ def run_backtest_handler():
             risk_free_rate=risk_free
         ))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/market/indices")
 def get_market_indices():
@@ -255,7 +278,7 @@ def get_market_indices():
                 data.append({"symbol": sym, "name": name, "price": price, "prev": prev})
         return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/market/featured")
 def get_featured_stocks():
@@ -271,7 +294,7 @@ def get_featured_stocks():
                 data.append({"symbol": sym, "name": name, "price": price, "prev": prev})
         return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)
 
 @api.route("/market/quotes")
 def get_market_quotes():
@@ -295,4 +318,4 @@ def get_market_quotes():
                 data.append({"symbol": sym, "price": price, "prev": prev})
         return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _handle_yf_error(e)

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
 import Screener from './pages/Screener';
 import BacktestLab from './pages/BacktestLab';
@@ -19,12 +19,22 @@ function NavLinkItem({ to, children }) {
   );
 }
 
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : "http://localhost:5050/api";
+
 function App() {
+  const [health, setHealth] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/health/data`)
+      .then(res => res.json())
+      .then(data => setHealth(data))
+      .catch(() => setHealth({ status: 'offline', message: "Backend offline or completely unreachable." }));
+  }, []);
+
   return (
     <Router>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         
-        {/* NEW DENSE PROFESSIONAL HEADER */}
         <header className="glass" style={{
           position: 'sticky', top: 0, zIndex: 100, 
           borderBottom: '1px solid var(--border-color)',
@@ -35,7 +45,6 @@ function App() {
         }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-            {/* Logo Area */}
             <Link to="/" style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ color: 'var(--accent-cyan)', fontSize: '1.2rem' }}>⚡</span>
@@ -46,7 +55,6 @@ function App() {
               </span>
             </Link>
 
-            {/* Main Navigation */}
             <nav style={{ display: 'flex', gap: '4px' }}>
               <NavLinkItem to="/">Dashboard</NavLinkItem>
               <NavLinkItem to="/markets">Markets</NavLinkItem>
@@ -63,6 +71,12 @@ function App() {
             <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))', cursor: 'pointer' }}></div>
           </div>
         </header>
+
+        {health && health.status !== 'healthy' && (
+          <div style={{ background: health.status === 'offline' ? '#EF4444' : '#F59E0B', color: 'black', padding: '10px 24px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600 }}>
+            ⚠️ {health.message || "Market data temporarily unavailable. Showing cached data where possible."}
+          </div>
+        )}
 
         <main style={{ flex: 1, padding: '24px', maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
           <Routes>
