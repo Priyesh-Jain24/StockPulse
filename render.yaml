@@ -1,0 +1,23 @@
+services:
+  # The Python Flask Backend
+  - type: web
+    name: stockpulse-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn backend.app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+
+  # The React Frontend
+  - type: web
+    name: stockpulse-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: stockpulse-backend
+          envVarKey: RENDER_EXTERNAL_URL
