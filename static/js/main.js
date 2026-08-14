@@ -32,13 +32,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // NOTE: Do NOT init TV chart here — it's in a hidden div and will get 0 dimensions.
     // Chart is lazily initialized inside showDetailView() instead.
     
-    // Bind Home Logo
+    // Bind Nav links
     const logo = document.getElementById("nav-logo");
-    if (logo) {
-        logo.addEventListener("click", () => {
-            showHomeView();
-        });
-    }
+    const navHome = document.getElementById("nav-home");
+    const navScreener = document.getElementById("nav-screener");
+    const navBacktest = document.getElementById("nav-backtest");
+
+    if (logo) logo.addEventListener("click", showHomeView);
+    if (navHome) navHome.addEventListener("click", showHomeView);
+    if (navScreener) navScreener.addEventListener("click", showScreenerView);
+    if (navBacktest) navBacktest.addEventListener("click", showBacktestView);
+    
+    initScreenerControls();
+    initBacktestControls();
 
     loadMarketIndices();
     
@@ -113,23 +119,71 @@ function initTVChart() {
 // ================================================================
 // VIEWS & NAVIGATION
 // ================================================================
+function setNavActive(id) {
+    $$(".nav-links .nav-btn").forEach(n => {
+        n.style.color = "var(--text-muted)";
+    });
+    const el = document.getElementById(id);
+    if(el) el.style.color = "white";
+}
+
 function showHomeView() {
     const homeView = document.getElementById("home-view");
     const detailView = document.getElementById("detail-view");
+    const screenerView = document.getElementById("screener-view");
+    const backtestView = document.getElementById("backtest-view");
+    
     if (homeView) homeView.style.display = "block";
     if (detailView) detailView.style.display = "none";
+    if (screenerView) screenerView.style.display = "none";
+    if (backtestView) backtestView.style.display = "none";
     
+    setNavActive("nav-home");
     loadFeaturedStocks();
+}
+
+function showScreenerView() {
+    const homeView = document.getElementById("home-view");
+    const detailView = document.getElementById("detail-view");
+    const screenerView = document.getElementById("screener-view");
+    const backtestView = document.getElementById("backtest-view");
+    
+    if (homeView) homeView.style.display = "none";
+    if (detailView) detailView.style.display = "none";
+    if (screenerView) screenerView.style.display = "block";
+    if (backtestView) backtestView.style.display = "none";
+    
+    setNavActive("nav-screener");
+    if(!window._screenerDataLoaded) loadScreenerData();
+}
+
+function showBacktestView() {
+    const homeView = document.getElementById("home-view");
+    const detailView = document.getElementById("detail-view");
+    const screenerView = document.getElementById("screener-view");
+    const backtestView = document.getElementById("backtest-view");
+    
+    if (homeView) homeView.style.display = "none";
+    if (detailView) detailView.style.display = "none";
+    if (screenerView) screenerView.style.display = "none";
+    if (backtestView) backtestView.style.display = "block";
+    
+    setNavActive("nav-backtest");
+    if(!window._btChart) initBacktestChart();
 }
 
 function showDetailView() {
     const homeView = document.getElementById("home-view");
     const detailView = document.getElementById("detail-view");
+    const screenerView = document.getElementById("screener-view");
+    const backtestView = document.getElementById("backtest-view");
+    
     if (homeView) homeView.style.display = "none";
+    if (screenerView) screenerView.style.display = "none";
+    if (backtestView) backtestView.style.display = "none";
     if (detailView) detailView.style.display = "block";
     
     // Lazily initialize chart the first time detail view is shown
-    // (can't init in a hidden container — it would get 0 width/height)
     if (!tvChart) {
         setTimeout(() => initTVChart(), 50);
     } else {
@@ -253,6 +307,8 @@ async function loadStockInfo(symbol) {
         renderMetrics(d);
         renderCompanyInfo(d);
         renderKeyStats(d);
+        renderStockPulseScore(d);
+        renderInvestmentThesis(d);
     } catch (err) {
         showToast(`Error loading info: ${err.message}`, "error");
     }
@@ -356,6 +412,46 @@ function renderKeyStats(d) {
 function setInfo(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val != null ? val : "N/A";
+}
+
+function renderStockPulseScore(d) {
+    const totalEl = $("#sp-score-total");
+    const barsContainer = $("#sp-score-bars");
+    
+    if(!d || !d.stockpulseScore || !totalEl || !barsContainer) {
+        if(totalEl) totalEl.textContent = "N/A";
+        if(barsContainer) barsContainer.innerHTML = "<div style='color:var(--text-muted)'>Score data unavailable for this stock.</div>";
+        return;
+    }
+    
+    const sc = d.stockpulseScore;
+    totalEl.textContent = `${sc.total}/100`;
+    
+    const renderBar = (label, value) => {
+        let color = "#ef4444"; // red
+        if (value > 40) color = "#eab308"; // yellow
+        if (value > 60) color = "#22c55e"; // green
+        
+        return `
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.85rem;">
+                    <span style="color:var(--text-muted);">${label}</span>
+                    <span style="font-weight:bold; color:white;">${value}</span>
+                </div>
+                <div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">
+                    <div style="width:${value}%; height:100%; background:${color};"></div>
+                </div>
+            </div>
+        `;
+    };
+    
+    barsContainer.innerHTML = 
+        renderBar("Profitability", sc.profitability) +
+        renderBar("Growth", sc.growth) +
+        renderBar("Valuation", sc.valuation) +
+        renderBar("Financial Health", sc.health) +
+        renderBar("Price Momentum", sc.momentum) +
+        renderBar("Dividend Profile", sc.dividend);
 }
 
 // ----- Stock Data (Charts) ----- //
@@ -1026,4 +1122,311 @@ function showToast(msg, type = "info") {
     toast.innerHTML = `<span>${type === "success" ? "✓" : type === "error" ? "✕" : "ℹ"}</span> ${msg}`;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+}
+
+// ================================================================
+// SCREENER
+// ================================================================
+window._screenerDataLoaded = false;
+window._screenerActiveData = [];
+window._screenerOriginalData = [];
+window._screenerSortBy = "marketCap";
+window._screenerSortAsc = false;
+let screenerRefreshTimeout = null;
+
+function initScreenerControls() {
+    const sectorFilter = $("#screener-filter-sector");
+    const peFilter = $("#screener-filter-pe");
+    const roeFilter = $("#screener-filter-roe");
+    const resetBtn = $("#screener-reset-btn");
+    const refreshBtn = $("#screener-refresh-btn");
+    
+    if(!sectorFilter) return;
+
+    const applyFilters = () => {
+        const sf = sectorFilter.value;
+        const pef = peFilter.value;
+        const roef = roeFilter.value;
+        
+        window._screenerActiveData = window._screenerOriginalData.filter(d => {
+            if (sf && d.sector !== sf) return false;
+            
+            if (pef) {
+                if(d.pe == null) return false;
+                if(pef === "<15" && d.pe >= 15) return false;
+                if(pef === "<25" && d.pe >= 25) return false;
+                if(pef === ">25" && d.pe <= 25) return false;
+            }
+            
+            if (roef) {
+                const roePct = d.roe * 100;
+                if(d.roe == null) return false;
+                if(roef === ">10" && roePct <= 10) return false;
+                if(roef === ">15" && roePct <= 15) return false;
+                if(roef === ">20" && roePct <= 20) return false;
+            }
+            
+            return true;
+        });
+        
+        applyScreenerSort();
+    };
+
+    sectorFilter.addEventListener("change", applyFilters);
+    peFilter.addEventListener("change", applyFilters);
+    roeFilter.addEventListener("change", applyFilters);
+    
+    resetBtn.addEventListener("click", () => {
+        sectorFilter.value = "";
+        peFilter.value = "";
+        roeFilter.value = "";
+        applyFilters();
+    });
+    
+    refreshBtn.addEventListener("click", () => {
+        window._screenerDataLoaded = false;
+        loadScreenerData();
+    });
+
+    $$("#screener-table th[data-sort]").forEach(th => {
+        th.addEventListener("click", () => {
+            const field = th.dataset.sort;
+            if (window._screenerSortBy === field) {
+                window._screenerSortAsc = !window._screenerSortAsc;
+            } else {
+                window._screenerSortBy = field;
+                window._screenerSortAsc = (field === 'symbol' || field === 'name' || field === 'sector') ? true : false;
+            }
+            applyScreenerSort();
+        });
+    });
+}
+
+function applyScreenerSort() {
+    const field = window._screenerSortBy;
+    const asc = window._screenerSortAsc;
+    const mult = asc ? 1 : -1;
+    
+    window._screenerActiveData.sort((a, b) => {
+        let valA = a[field];
+        let valB = b[field];
+        
+        if (valA == null) return 1;
+        if (valB == null) return -1;
+        if (valA == null && valB == null) return 0;
+        
+        if (typeof valA === "string") return valA.localeCompare(valB) * mult;
+        return (valA - valB) * mult;
+    });
+    
+    renderScreenerTable(window._screenerActiveData);
+}
+
+async function loadScreenerData() {
+    const tbody = $("#screener-tbody");
+    if(!tbody) return;
+    
+    if(!window._screenerDataLoaded) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px;"><div class="inline-spinner"></div> Loading Screener Data... (This takes a moment during initial boot)</td></tr>`;
+    }
+
+    try {
+        const resp = await fetch("/api/screener");
+        const json = await resp.json();
+        
+        if (json.status === "loading") {
+            // Still loading on backend, poll again in 2 seconds
+            if (!screenerRefreshTimeout) {
+                screenerRefreshTimeout = setTimeout(() => {
+                    screenerRefreshTimeout = null;
+                    loadScreenerData();
+                }, 2000);
+            }
+            return;
+        }
+        
+        window._screenerOriginalData = json.data;
+        window._screenerDataLoaded = true;
+        
+        // Populate sector filter dropdown
+        const sectorSelect = $("#screener-filter-sector");
+        if (sectorSelect && sectorSelect.options.length <= 1) {
+            const sectors = [...new Set(json.data.map(d => d.sector).filter(s => s && s!=="N/A"))].sort();
+            sectors.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = opt.textContent = s;
+                sectorSelect.appendChild(opt);
+            });
+        }
+
+        // Trigger filters & sort which renders the table
+        // We manually call applyFilters logic
+        const event = new Event('change');
+        $("#screener-filter-sector").dispatchEvent(event);
+        
+    } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #ef4444;">Failed to load screener data.</td></tr>`;
+    }
+}
+
+function renderScreenerTable(data) {
+    const tbody = $("#screener-tbody");
+    if(!tbody) return;
+    
+    if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">No stocks match the selected criteria.</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = data.map(d => {
+        const p = d.price != null ? d.price.toFixed(2) : "—";
+        const pe = d.pe != null ? d.pe.toFixed(2) : "—";
+        const roe = d.roe != null ? (d.roe * 100).toFixed(2) + "%" : "—";
+        const revGW = d.revenueGrowth != null ? (d.revenueGrowth * 100).toFixed(2) + "%" : "—";
+        
+        let fgClass = "";
+        let fyReturnHtml;
+        if(d.fiftyTwoWeekReturn != null) {
+            const isPos = d.fiftyTwoWeekReturn >= 0;
+            fgClass = isPos ? "positive" : "negative";
+            fyReturnHtml = `<span class="${fgClass}">${isPos?"+":""}${(d.fiftyTwoWeekReturn*100).toFixed(2)}%</span>`;
+        } else {
+            fyReturnHtml = "—";
+        }
+        
+        return `
+            <tr style="cursor: pointer;" onclick="loadStock('${d.symbol}')">
+                <td style="font-weight: bold; color: white;">${d.symbol}</td>
+                <td><div style="max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.name}</div></td>
+                <td style="color: var(--text-muted);">${d.sector}</td>
+                <td class="numeric">${p}</td>
+                <td class="numeric">${pe}</td>
+                <td class="numeric">${roe}</td>
+                <td class="numeric">${revGW}</td>
+                <td class="numeric">${fyReturnHtml}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+// ================================================================
+// INVESTMENT THESIS & BACKTESTING
+// ================================================================
+
+function renderInvestmentThesis(d) {
+    const container = $("#thesis-content");
+    if (!container) return;
+    
+    if(!d || !d.stockpulseScore) {
+        container.innerHTML = "Not enough data to automatically generate an investment thesis.";
+        return;
+    }
+    
+    const sc = d.stockpulseScore;
+    let thesis = [];
+    
+    // Growth
+    if (sc.growth > 75) thesis.push(`<b>Strong Growth Trajectory:</b> ${d.shortName} exhibits excellent top and bottom-line momentum relative to its peers.`);
+    else if (sc.growth < 30) thesis.push(`<b>Growth Concerns:</b> Revenue and earnings expansion appears sluggish, signaling potential maturity or headwinds in the current macro environment.`);
+    
+    // Valuation
+    if (sc.valuation > 70) thesis.push(`<b>Attractive Valuation:</b> Trading at a P/E of ${d.pe ? d.pe.toFixed(1) : 'N/A'}, the stock appears fundamentally undervalued compared to the broader market index.`);
+    else if (sc.valuation < 30) thesis.push(`<b>Premium Pricing:</b> With a high valuation multiple, the market has likely priced in optimistic future growth, inherently increasing execution risk.`);
+    
+    // Health / Profitability
+    if (sc.profitability > 70 && sc.health > 70) thesis.push(`<b>Robust Fundamentals:</b> High operating margins coupled with a very strong balance sheet makes this a highly defensive and resilient equity.`);
+    else if (sc.health < 40) thesis.push(`<b>Leverage Risks:</b> Higher than average debt levels require careful monitoring of debt-servicing capability in high interest-rate environments.`);
+    
+    if (sc.dividend > 75) thesis.push(`<b>Income Generating:</b> A strong dividend yield makes this an attractive consideration for yield-seeking portfolios.`);
+    
+    if (thesis.length === 0) {
+        thesis.push(`<b>Balanced Profile:</b> The company presents an average fundamental breakdown with no extreme outliers in growth, valuation, or profitability.`);
+    }
+    
+    container.innerHTML = `<ul style='padding-left:20px'><li>` + thesis.join("</li><li style='margin-top:10px;'>") + `</li></ul>
+    <div style='margin-top:15px; font-size:0.8rem; color:var(--text-muted);'><i>* Automaton-generated analysis based on mathematical scoring of trailing financial data. Not investment advice.</i></div>`;
+}
+
+let _btChart = null;
+let _btLineSeries = null;
+
+function initBacktestChart() {
+    const container = document.getElementById('backtest-chart');
+    if (!container) return;
+    try {
+        _btChart = LightweightCharts.createChart(container, {
+            layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b8fa3' },
+            grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
+            timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true }
+        });
+        
+        _btLineSeries = _btChart.addAreaSeries({
+            lineColor: '#00e5ff', topColor: 'rgba(0, 229, 255, 0.4)', bottomColor: 'rgba(0, 229, 255, 0.0)'
+        });
+        
+        window._btChart = _btChart;
+        window.addEventListener('resize', () => _btChart.resize(container.clientWidth, container.clientHeight));
+    } catch(e) {}
+}
+
+function initBacktestControls() {
+    const btn = $("#run-backtest-btn");
+    if(!btn) return;
+    
+    btn.addEventListener("click", async () => {
+        const sym = $("#backtest-sym").value || "RELIANCE.NS";
+        const cap = $("#backtest-cap").value || 100000;
+        const resultsDiv = $("#backtest-results");
+        
+        btn.textContent = "Running...";
+        btn.disabled = true;
+        
+        try {
+            const resp = await fetch(`/api/backtest?symbol=${sym}&capital=${cap}`);
+            const data = await resp.json();
+            
+            if(data.error) {
+                showToast(data.error, "error");
+                btn.textContent = "Run Simulation";
+                btn.disabled = false;
+                return;
+            }
+            
+            // Render Chart
+            if(_btLineSeries && data.equity_curve) {
+                _btLineSeries.setData(data.equity_curve);
+                _btChart.timeScale().fitContent();
+            }
+            
+            // Render Stats
+            const retClass = data.total_return_pct >= 0 ? "positive" : "negative";
+            const bnhClass = data.benchmark_return_pct >= 0 ? "positive" : "negative";
+            
+            resultsDiv.style.display = "flex";
+            resultsDiv.innerHTML = `
+                <div class="metric-card glass fade-in" style="flex:1;">
+                    <span class="metric-card__label">Final Capital</span>
+                    <span class="metric-card__value">₹${data.final_capital.toFixed(2)}</span>
+                </div>
+                <div class="metric-card glass fade-in" style="flex:1;">
+                    <span class="metric-card__label">Strategy Return</span>
+                    <span class="metric-card__value ${retClass}">${data.total_return_pct.toFixed(2)}%</span>
+                </div>
+                <div class="metric-card glass fade-in" style="flex:1;">
+                    <span class="metric-card__label">Buy & Hold Return</span>
+                    <span class="metric-card__value ${bnhClass}">${data.benchmark_return_pct.toFixed(2)}%</span>
+                </div>
+                <div class="metric-card glass fade-in" style="flex:1;">
+                    <span class="metric-card__label">Win Rate (${data.total_trades} trades)</span>
+                    <span class="metric-card__value">${data.win_rate.toFixed(1)}%</span>
+                </div>
+            `;
+            
+        } catch(e) {
+            showToast("Failed to run backtest.", "error");
+        }
+        
+        btn.textContent = "Run Simulation";
+        btn.disabled = false;
+    });
 }

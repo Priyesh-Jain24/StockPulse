@@ -1,39 +1,42 @@
-# StockPulse 📈
+# StockPulse Analyst 📈
 
-StockPulse is a modern, high-performance financial dashboard designed specifically for the Indian stock market (NSE/BSE). Powered by a lightweight Python Flask backend and a sleek vanilla frontend, it offers real-time data, technical charting, and personal portfolio tracking—all enveloped in a stunning glassmorphic dark-mode UI.
+StockPulse Analyst is a production-grade financial analytics and equity research platform designed for the Indian stock market (NSE/BSE). Powered by a lightweight Python Flask backend and a highly polished glassmorphic frontend, it bridges the gap between simple stock trackers and institutional-grade algorithmic research platforms.
 
-### 🌟 Key Features
+## Problem Statement
+Traditional retail stock dashboards focus solely on real-time price tracking, lacking the depth required for meaningful fundamental analysis. StockPulse Analyst solves this by offering a transparent, quantitative scoring system, macroeconomic benchmarking, peer comparisons, and historical algorithmic backtesting within a single, highly performant interface.
 
-- **Personalized Market Overview:** A rich home dashboard dynamically fetching real-time telemetry array for 12 of India's biggest market movers (Nifty 50 leaders).
-- **TradingView Integration:** Deep technical charting via Lightweight Charts, fully interactive with candlesticks and volume bars.
-- **Technical Indicators Engine:** Live-computed dynamic overlay toggles for Simple Moving Averages (`SMA-50`, `SMA-200`) directly on the price chart.
-- **Live Portfolio Tracker:** A built-in virtual portfolio built on `localStorage`. Add your positions, input your buy prices, and watch the app instantly calculate your live P&L and daily returns using blazing-fast backend batch payloads.
-- **Deep Financials & News:** Instant access to Quarterly Income Statements, Balance Sheets, 52-Week Range Gauges, and the latest aggregated financial news for any ticker.
-- **Blazing Fast API (`yfinance`):** The backend is strictly optimized to serve bulk batched price quotes, bringing load times from ~9s down to less than 1.5s.
+## Key Features
+- **Stock Screener**: Robust, high-speed fundamental filtering utilizing an in-memory cached universe of top Indian constituents.
+- **StockPulse Score**: A custom 0-100 quantitative algorithmic rating assessing a company's profitability, growth, valuation, health, momentum, and dividend profile.
+- **Strategy Backtesting Lab**: Simulate mechanical trading strategies (e.g., 50/200 SMA Crossover) using historical Pandas data processing to generate equity curves and win-rates.
+- **Investment Thesis Generation**: Auto-generated analyst summaries that interpret trailing financial data into readable bull/bear cases.
+- **Peer & Sector Analysis**: Aggregated macro-views comparing valuation multiples (P/E, ROE) across entire market sectors.
+- **Portfolio Analytics**: Built-in virtual portfolio tracking with live P&L benchmarking against major indices.
 
-### 🏗️ Tech Stack
+## Financial Methodology & Formulas
+StockPulse relies on strict quantitative aggregation.
+- **Profitability (20%)**: Averages normalized Return on Equity (ROE) and Operating Margins.
+- **Growth (15%)**: Averages Revenue Growth and Earnings Growth over TTM.
+- **Valuation (20%)**: Blends trailing P/E and Price-to-Book. Lower multiples map to higher scores (capped at acceptable thresholds).
+- **Health (20%)**: Analyzes Debt/Equity ratio, inversely scoring high-leverage profiles.
+- **Momentum (15%)**: Measures 52-week trailing return against a sector-neutral 0% baseline.
+- **Dividends (10%)**: Directly correlates to the TTM Dividend Yield.
 
-- **Backend:** Python 3, Flask, `yfinance`, Pandas
-- **Frontend:** Vanilla HTML5, CSS3 (Glassmorphism), JavaScript
-- **Charting:** TradingView Lightweight Charts (`@4.2.1`)
-- **Database:** Browser `localStorage` (for persistent Watchlist and Portfolio)
+*All sub-scores are normalized on a 0-100 scale using continuous clamped interpolation against standard market boundaries (e.g. ROE 5% to 25%).*
 
-### 🚀 Getting Started
+## Data Sources
+Data is sourced entirely via the `yfinance` library, which proxies Yahoo Finance API endpoints. Data includes real-time pricing, historical OHLCV, detailed company profiles, and quarterly financial statements.
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/StockPulse.git
-   cd StockPulse
-   ```
-2. **Install dependancies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Run the server:**
-   ```bash
-   python app.py
-   ```
-4. **Open in Browser:** Navigate to `http://127.0.0.1:5050`
+## Setup Instructions
+1. **Clone the repository**: `git clone https://github.com/YOUR_USERNAME/StockPulse.git`
+2. **Install dependencies**: `pip install -r requirements.txt`
+3. **Run Server**: `python app.py`
+4. **View**: Navigate to `http://127.0.0.1:5050`
 
----
-> *Disclaimer: Data is sourced from the unofficial `yfinance` library. This is intended for personal and educational use only.*
+## Limitations & Assumptions
+- **Predefined Universe**: The Stock Screener limits its universe to the Nifty 50 to prevent severe rate-limiting by Yahoo Finance during batch fetching.
+- **Data Gaps**: Yahoo Finance is notoriously inconsistent with specific financial ratios for smaller Indian equities. The app employs `_safe()` fallbacks and renders `N/A` instead of hallucinating metrics.
+- **Execution Lag**: Strategy backtests assume execution at the closing price of the signal generation day.
+- **Not Financial Advice**: All analytical text and scores are backward-looking quantitative calculations.
+
+*(Screenshots to be added here)*
