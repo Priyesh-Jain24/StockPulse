@@ -4,15 +4,16 @@ from backend.routes import api
 from backend.cache.screener_cache import start_cache_thread
 
 def create_app():
-    app = Flask(__name__)
-    CORS(app)
+    app_instance = Flask(__name__)
+    CORS(app_instance)
     
-    app.register_blueprint(api)
+    app_instance.register_blueprint(api)
     
     start_cache_thread()
     
-    return app
+    return app_instance
+
+app = create_app()
 
 if __name__ == "__main__":
-    app = create_app()
     app.run(debug=True, port=5050)
